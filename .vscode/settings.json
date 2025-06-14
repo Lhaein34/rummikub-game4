@@ -1,0 +1,9 @@
+{
+    "python.analysis.extraPaths": [
+        "./shared/make_ascii_",
+        "./shared/make_ascii_"
+    ],
+    "files.associations": {
+        "iostream": "cpp"
+    }
+}

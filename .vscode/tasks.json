@@ -1,0 +1,54 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Server",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "server/server.cpp",
+                "-o",
+                "server/server.out",
+                "-std=c++17",
+                "-pthread"
+            ],
+            "group": "build"
+        },
+        {
+            "label": "Build Client",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "client/client.cpp",
+                "-o",
+                "client/client",
+                "-std=c++17",
+                "-pthread"
+            ],
+            "group": "build"
+        },
+        {
+            "type": "cppbuild",
+            "label": "C/C++: g++-9 활성 파일 빌드",
+            "command": "/usr/bin/g++-9",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g",
+                "${file}",
+                "-o",
+                "${fileDirname}/${fileBasenameNoExtension}"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "디버거에서 생성된 작업입니다."
+        }
+    ]
+}
