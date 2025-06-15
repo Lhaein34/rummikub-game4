@@ -189,8 +189,8 @@ static bool is_run(vector<pair<int,int>> v) {
     return true;
 }
 
-void add_table_tiles(bool is_user)
-{
+void add_table_tiles(int sock, bool is_user) {
+    vector<pair<int,int>> placed;
     try
     {
         cout << "\n▶ 내 패를 테이블에 놓기\n";
@@ -371,9 +371,10 @@ void add_table_tiles(bool is_user)
             num_of_total_tiles--;
             num_of_table_total_tiles++;
         }
-        //last_placed_tiles = placed;
+        last_placed_tiles = placed;
+        send_placed_to_server(sock);
+        print_table_tiles();
         cout << "✅ 테이블에 타일을 놓았습니다.\n";
-        // 
     }
     catch(...)
     {
@@ -381,86 +382,46 @@ void add_table_tiles(bool is_user)
     }
 }
 
-void print_table_tiles()
-{
-    try
-    {
-        for(int j = 1; j <= num_of_table_total_tiles; j++)
-        {
-            printf(".___  ");
-        }
-        cout<<endl;
+void print_table_tiles() {
+    std::vector<std::pair<int, int>> tiles;
 
-        // 조커
-        int jokers = table_red_tiles[0] + table_blue_tiles[0]
-                   + table_yellow_tiles[0] + table_black_tiles[0];
-        for(int j = 0; j < jokers; ++j)
-            cout << "|J |  ";
+    // 1. 조커들 먼저
+    for (int i = 0; i < table_red_tiles[0]; ++i)    tiles.emplace_back(RED, 0);
+    for (int i = 0; i < table_blue_tiles[0]; ++i)   tiles.emplace_back(BLUE, 0);
+    for (int i = 0; i < table_yellow_tiles[0]; ++i) tiles.emplace_back(YELLOW, 0);
+    for (int i = 0; i < table_black_tiles[0]; ++i)  tiles.emplace_back(BLACK, 0);
 
-
-        for(int i = 1; i<= 13; i++)
-        {
-            if(table_red_tiles[i] != 0)
-            {
-                for(int j = 0; j < table_red_tiles[i]; j++)
-                {
-                    printf("|");
-                    printf("\033[%dm%2d\033[0m",RED, i);
-                    printf("|  ");
-                }
-
-            }
-            
-        }
-        for(int i = 1; i<= 13; i++)
-        {
-            if(table_blue_tiles[i] != 0)
-            {
-
-                for(int j = 0; j < table_blue_tiles[i]; j++)
-                {
-                    printf("|");
-                    printf("\033[%dm%2d\033[0m",BLUE, i);
-                    printf("|  ");
-                }
-            }    
-        }
-        for(int i = 1; i<= 13; i++)
-        {
-            if(table_yellow_tiles[i] != 0)
-            {
-                for(int j = 0; j < table_yellow_tiles[i]; j++)
-                {
-                    printf("|");
-                    printf("\033[%dm%2d\033[0m",YELLOW, i);
-                    printf("|  ");
-                }
-            }
-        }
-        for(int i = 1; i<= 13; i++)
-        {
-            if(table_black_tiles[i] != 0)
-            {
-                for(int j = 0; j < table_black_tiles[i]; j++)
-                {
-                    printf("|");
-                    printf("\033[%dm%2d\033[0m",BLACK, i);
-                    printf("|  ");
-                }
-            }
-        } 
-        cout<<endl;
-        for(int j = 1; j <= num_of_table_total_tiles; j++)
-        {
-            printf("|__|  ");
-        }
-        cout<<endl;
-    }
-    catch(int err)
-    {
-        error_msg();
+    // 2. 나머지 타일
+    for (int i = 1; i <= 13; ++i) {
+        for (int j = 0; j < table_red_tiles[i]; ++j)    tiles.emplace_back(RED, i);
+        for (int j = 0; j < table_blue_tiles[i]; ++j)   tiles.emplace_back(BLUE, i);
+        for (int j = 0; j < table_yellow_tiles[i]; ++j) tiles.emplace_back(YELLOW, i);
+        for (int j = 0; j < table_black_tiles[i]; ++j)  tiles.emplace_back(BLACK, i);
     }
 
+    // 3. 출력 (.___ 줄)
+    for (size_t i = 0; i < tiles.size(); ++i) {
+        printf(".___  ");
+    }
+    std::cout << "\n";
+
+    // 4. 타일 내용 줄
+    for (auto &p : tiles) {
+        if (p.second == 0) {
+            printf("|J |  ");
+        } else {
+            printf("|");
+            printf("\033[%dm%2d\033[0m", p.first, p.second);
+            printf("|  ");
+        }
+    }
+    std::cout << "\n";
+
+    // 5. |__| 줄
+    for (size_t i = 0; i < tiles.size(); ++i) {
+        printf("|__|  ");
+    }
+    std::cout << "\n";
 }
 
 void print_user_tiles()
@@ -740,65 +701,54 @@ int connect_to_server(){
     return sock;
 }
 
-// // 1바이트씩이 아니라 n바이트를 딱 읽어주는 헬퍼
-// static std::string read_n(int sock, size_t n) {
-//     std::string s;
-//     s.resize(n);
-//     size_t received = 0;
-//     while (received < n) {
-//         int r = recv(sock, &s[received], n - received, 0);
-//         if (r <= 0) throw std::runtime_error("recv error");
-//         received += r;
-//     }
-//     return s;
-// }
-
-// SET_COUNT ↔ OK 핸드셰이크만 처리
-// static std::string read_handshake_token(int sock) {
-//     std::string buf;
-//     char c;
-//     while (true) {
-//         if (recv(sock, &c, 1, 0) <= 0) throw std::runtime_error("recv error");
-//         buf.push_back(c);
-//         if (buf == "SET_COUNT" || buf == "OK") return buf;
-//         // 둘 중 어느 것도 접두사가 아니면 에러
-//         if (!(std::string("SET_COUNT").compare(0, buf.size(), buf) == 0 ||
-//               std::string("OK").compare(0, buf.size(), buf) == 0)) {
-//             throw std::runtime_error("unexpected handshake token: " + buf);
-//         }
-//     }
-// }
-
-// common.hpp 에서 BUFFER_SIZE >= 9 로 정의되어 있다고 가정
 static bool do_handshake(int sock) {
     char buf[BUFFER_SIZE];
 
-    // 1) 첫 클라이언트는 "SET_COUNT"(9) 아니면 OK(2) 둘 중 하나
-    int n = recv(sock, buf, 9, 0);
-    if (n <= 0) { perror("recv"); return false; }
+    // 최대 BUFFER_SIZE 만큼 수신 (OK+START 같은 경우를 처리하기 위함)
+    int n = recv(sock, buf, BUFFER_SIZE - 1, 0);
+    if (n <= 0) {
+        perror("recv");
+        return false;
+    }
+    buf[n] = '\0'; // null 종료
 
-    if (n == 9 && std::strncmp(buf, "SET_COUNT", 9) == 0) {
-        // --- 첫 클라이언트 ---
+    if (std::strncmp(buf, "SET_COUNT", 9) == 0) {
+        // --- 첫 번째 클라이언트 ---
         int cnt;
         do {
-          std::cout << "몇 명이 플레이합니까? (2~4): ";
-          std::cin  >> cnt;
+            std::cout << "몇 명이 플레이합니까? (2~4): ";
+            std::cin >> cnt;
         } while (cnt < 2 || cnt > 4);
 
-        auto s = std::to_string(cnt);
+        std::string s = std::to_string(cnt);
         send(sock, s.c_str(), s.size(), 0);
 
-        // OK(2) 받기
-        n = recv(sock, buf, 2, 0);
-        if (n != 2 || std::strncmp(buf, "OK", 2) != 0) {
-          std::cerr << "서버가 OK를 보냈어야 하는데: " 
-                    << std::string(buf, n) << "\n";
-          return false;
+        // OK(2) 수신 대기
+        n = recv(sock, buf, BUFFER_SIZE - 1, 0);
+        if (n <= 0) {
+            perror("recv");
+            return false;
+        }
+        buf[n] = '\0';
+
+        if (std::strncmp(buf, "OK", 2) != 0) {
+            std::cerr << "서버가 OK를 보냈어야 하는데: "
+                      << std::string(buf, n) << "\n";
+            return false;
+        }
+
+        // OK 뒤에 START가 붙어 온 경우 처리
+        if (n >= 7 && std::strncmp(buf + 2, "START", 5) == 0) {
+            show_ascii_art();
+            std::cout << "========== GAME START ==========\n";
         }
     }
-    else if (n == 2 && std::strncmp(buf, "OK", 2) == 0) {
+    else if (std::strncmp(buf, "OK", 2) == 0) {
         // --- 두 번째 이후 클라이언트 ---
-        // 그냥 넘어갑니다.
+        if (n >= 7 && std::strncmp(buf + 2, "START", 5) == 0) {
+            show_ascii_art();
+            std::cout << "========== GAME START ==========\n";
+        }
     }
     else {
         std::cerr << "핸드셰이크 프로토콜 오류: 예상 SET_COUNT(9) or OK(2), got "
@@ -808,6 +758,7 @@ static bool do_handshake(int sock) {
 
     return true;
 }
+
 
 static bool wait_for_start(int sock) {
     char buf[BUFFER_SIZE];
@@ -822,48 +773,58 @@ static bool wait_for_start(int sock) {
     return true;
 }
 
-
 void receiver_loop(int sock) {
     char buf[BUFFER_SIZE];
     while (true) {
-        int n = recv(sock, buf, sizeof(buf)-1, 0);
+        int n = recv(sock, buf, sizeof(buf) - 1, 0);
         if (n <= 0) break;
-        buf[n] = '\0';
 
-        if (std::strncmp(buf, "UPDATE", 6) == 0) {
-            // "UPDATE <color> <num>"
-            int color, num;
-            std::sscanf(buf+7, "%d %d", &color, &num);
-            switch(color) {
-                case RED:    table_red_tiles[num]++;    break;
-                case BLUE:   table_blue_tiles[num]++;   break;
-                case YELLOW: table_yellow_tiles[num]++; break;
-                case BLACK:  table_black_tiles[num]++;  break;
+        buf[n] = '\0';
+        std::istringstream iss(buf);
+        std::string line;
+
+        while (std::getline(iss, line)) {
+            if (line.find("UPDATE") == 0) {
+                int color, num;
+                if (std::sscanf(line.c_str(), "UPDATE %d %d", &color, &num) == 2) {
+                    switch(color) {
+                        case RED:    table_red_tiles[num]++;    break;
+                        case BLUE:   table_blue_tiles[num]++;   break;
+                        case YELLOW: table_yellow_tiles[num]++; break;
+                        case BLACK:  table_black_tiles[num]++;  break;
+                    }
+                    num_of_table_total_tiles++;
+                    //print_table_tiles();
+                }
             }
-            num_of_table_total_tiles++;
-            print_table_tiles();
-        }
-        else if (std::strcmp(buf, "YOUR_TURN") == 0) {
-            std::cout<<"\n[알림] 당신 차례입니다.\n";
-            // main 루프에서 입력 받도록 플래그 세워도 좋음
+            else if (line == "YOUR_TURN") {
+                std::cout << "\n[알림] 당신 차례입니다.\n";
+            }
         }
     }
 }
+
 // 서버에 방금 놓은 타일들 전송
 void send_placed_to_server(int sock) {
+    // 1) 문자열 하나로 뭉쳐서
+    std::string batch;
     for (auto &p : last_placed_tiles) {
-        char msg[32];
-        int L = std::snprintf(msg, sizeof(msg), "PLACE %d %d", p.first, p.second);
-        send(sock, msg, L, 0);
+        batch += "PLACE " 
+              + std::to_string(p.first) + " " 
+              + std::to_string(p.second) + "\n";   // 줄 바꿈 추가 권장
     }
+    // 2) 한 번만 send()
+    send(sock, batch.c_str(), batch.size(), 0);
+    last_placed_tiles.clear();
 }
+
 void sigint_handler(int) {
     if (sock >= 0) ::close(sock);
     std::exit(1);
 }
 int main() {
     show_ascii_art();
-    // 시그널 핸들러 등록
+        // 1) 시그널 핸들러 등록
     std::signal(SIGINT, sigint_handler);
     std::signal(SIGTERM, sigint_handler);
     // 서버 연결
@@ -878,78 +839,6 @@ int main() {
     // 백그라운드 수신 스레드 실행
     std::thread receiver(receiver_loop, sock);
     receiver.detach();
-
-    // 메시지 수신 전담 스레드
-    // std::thread receiver([&](){
-        // char buf[BUFFER_SIZE];
-        // while (true) {
-        //     int n = recv(sock, buf, sizeof(buf)-1, 0);
-        //     if (n <= 0) break;
-        //     buf[n] = '\0';
-
-        //     if (strncmp(buf, "UPDATE", 6) == 0) {
-        //         // "UPDATE <color> <num>"
-        //         int color, num;
-        //         sscanf(buf+7, "%d %d", &color, &num);
-        //         // 여기에 table_* 맵을 직접 수정하거나
-        //         // print_table_tiles() 호출 전에 반영할 수 있도록 전역변수에 저장
-        //         // 예를 들면:
-        //         switch(color) {
-        //         case RED:   table_red_tiles[num]++;   break;
-        //         case BLUE:  table_blue_tiles[num]++;  break;
-        //         case YELLOW:table_yellow_tiles[num]++;break;
-        //         case BLACK: table_black_tiles[num]++; break;
-        //         }
-        //         num_of_table_total_tiles++;
-        //         // 그리고 바로 화면에 갱신
-        //         print_table_tiles();
-        //     }
-        //     else if (strcmp(buf, "YOUR_TURN") == 0) {
-        //         // 자신의 차례 알림
-        //         std::cout << "\n[네트워크] 당신의 차례입니다. 테이블에 낼 타일을 선택하세요.\n";
-        //         // 여기는 main 루프 쪽에서 처리하도록 플래그를 세워도 됩니다.
-        //     }
-        // }
-    // });
-    // receiver.detach();
-
-     // 2) 첫 클라이언트는 서버로부터 SET_COUNT 신호를 받는다
-    // char buf[BUFFER_SIZE];
-    // int n = recv(sock, buf, sizeof(buf)-1, 0);
-    // if (n <= 0) { perror("recv"); close(sock); return 1; }
-    // buf[n] = '\0';
-
-    // if (string(buf) == "SET_COUNT") {
-    //     // 플레이어 수 입력
-    //     int target;
-    //     do {
-    //         cout << "몇 명이 플레이합니까? (2~4): ";
-    //         cin  >> target;
-    //     } while (target < 2 || target > 4);
-
-    //     // 서버에 전송
-    //     auto s = to_string(target);
-    //     send(sock, s.c_str(), s.size(), 0);
-
-    //     // 서버의 OK 응답 대기
-    //     n = recv(sock, buf, sizeof(buf)-1, 0);
-    //     if (n <= 0 || string(buf,n) != "OK") {
-    //         cerr << "서버가 설정을 수락하지 않았습니다.\n";
-    //         close(sock);
-    //         return 1;
-    //     }
-    // }
-    // 두 번째 이후 클라이언트는 아무것도 보내지 않고 바로 START 대기
-
-    // 3) 서버가 보낸 START 메시지 대기
-    // n = recv(sock, buf, sizeof(buf)-1, 0);
-    // if (n <= 0) { perror("recv"); close(sock); return 1; }
-    // buf[n] = '\0';
-    // if (string(buf) != "START") {
-    //     cerr << "게임 시작 신호를 받지 못했습니다: " << buf << "\n";
-    //     close(sock);
-    //     return 1;
-    // }
 
     int button = -1;
 
@@ -998,9 +887,10 @@ int main() {
         }
         else if(button==7){
             cout<<"\n▶ 7번: 내 패를 테이블에 놓기\n";
-            add_table_tiles(true);
-            print_table_tiles();
-            send_placed_to_server(sock);
+            // add_table_tiles(true);
+            // print_table_tiles();
+            // send_placed_to_server(sock);
+            add_table_tiles(sock, true);
         }
         else if(button==0){
             cout<<"프로그램을 종료합니다.\n";
@@ -1010,6 +900,7 @@ int main() {
             error_msg();
         }
     }
+    shutdown(sock, SHUT_RDWR);
     close(sock);
     return 0;
 }

@@ -34,6 +34,7 @@ void print_specific_tile(const std::vector<std::pair<int,int>>& v);
 void check_same_val();
 void check_continue_val();
 void game_end();
+void send_placed_to_server(int sock);
 
 // 1) Python 스크립트로 ASCII Art 출력
 inline void printAsciiArt() {
