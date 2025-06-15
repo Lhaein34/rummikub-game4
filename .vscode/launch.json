@@ -5,7 +5,7 @@
             "name": "Launch Server",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/server/server.out",
+            "program": "${workspaceFolder}/server/server",
             "args": [],
             "cwd": "${workspaceFolder}",
             "externalConsole": true,

@@ -1,5 +1,5 @@
 #include <iostream>
-#include "shared/common.h"
+#include "shared/common.hpp"
 
 int main() {
     // ASCII Art (numbers 1~13, 'Rummikub Solver', 'Game over')
